@@ -1,6 +1,7 @@
 #pragma config(Sensor, in1,    Gyroscope,      sensorGyro)
 #pragma config(Sensor, in2,    RightLiftSensor, sensorPotentiometer)
 #pragma config(Sensor, in3,    LeftLiftSensor, sensorPotentiometer)
+#pragma config(Sensor, in4,    FourBarSensor,  sensorPotentiometer)
 #pragma config(Sensor, dgtl1,  rightshaft,     sensorQuadEncoder)
 #pragma config(Sensor, dgtl3,  leftshaft,      sensorQuadEncoder)
 #pragma config(Motor,  port1,           ConeIntake,    tmotorVex393_HBridge, openLoop)
@@ -24,6 +25,8 @@ void testauto();
 
 const int MAX_SCISSORHEIGHT = 4100;
 const int MIN_SCISSORHEIGHT = 0;
+const int MAX_FOURBARHEIGHT = 4000;
+const int MIN_FOURBARHEIGHT = 0;
 const int TURNRIGHT_90 = 250;
 const int TURNLEFT_90 = 250;
 const float SLEW_OFFSET = .8;
@@ -32,8 +35,9 @@ const int TURN_MAXPOWER = 80;
 const float P_FACTOR = .2;
 const int WAIT_FOR_STOP = 200;
 int Scissortarget = 0;
+int FourBarTarget
 bool ScissorLiftControl = false;
-
+bool FourControl = false;
 
 int min(int a, int b) {
 	if (a > b)
@@ -46,10 +50,46 @@ int max(int a, int b) {
 		return a;
 	return b;
 }
+task FourBarControl()
+{
+	int FourBarError = 0; // Distance away from target, sets the value
+	int FourBarSpeed = 0; //How fast four bar motor is moving
+	while(true)
+	{
+		if(FourControl)
+		{
+			// Making sure nothing goes over the limit
+			if (FourBarTarget > MAX_FOURBARHEIGHT)
+			{
+				FourBarTarget = MAX_FOURBARHEIGHT;
+			}
+			if (FourBarTarget < MIN_FOURBARHEIGHT)
+			{
+				FourBarTarget = MIN_FOURBARHEIGHT;
+			}
+			int CurrentFourBarValue = SensorValue[FourBarSensor];
+			FourBarError = FourBarTarget - CurrentFourBarValue;
+			FourBarSpeed = FourBarError;
+
+			if (FourBarSpeed > 127) // Motor Shall not pass max speed
+			{
+				FourBarSpeed = 127;
+			}
+			else if (FourBarSpeed < -127) // Motor Shall not pass max speed
+			{
+				FourBarSpeed = -127;
+			}
+			else if (abs(FourBarSpeed) < 20) //Keep motor from making stalling sound
+			{
+				FourBarSpeed = 0;
+			}
+		}
+	}
+}
 task ScissorControl()
 {
-	int ScissorerrorRight = 0;
-  int ScissorerrorLeft = 0;
+	int ScissorErrorRight = 0;
+  int ScissorErrorLeft = 0;
   int ScissorLiftLeft = 0;
   int ScissorLiftRight = 0;
   int buffer = 100;
