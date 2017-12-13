@@ -3,6 +3,7 @@
 #pragma config(Sensor, in3,    LeftLiftSensor, sensorPotentiometer)
 #pragma config(Sensor, dgtl1,  rightshaft,     sensorQuadEncoder)
 #pragma config(Sensor, dgtl3,  leftshaft,      sensorQuadEncoder)
+#pragma config(Motor,  port1,           ConeIntake,    tmotorVex393_HBridge, openLoop)
 #pragma config(Motor,  port2,           rightbackwheel, tmotorVex393_MC29, openLoop, reversed)
 #pragma config(Motor,  port3,           rightfrontwheel, tmotorVex393_MC29, openLoop, reversed)
 #pragma config(Motor,  port4,           RightLift,     tmotorVex393_MC29, openLoop, reversed)
@@ -55,37 +56,45 @@ task ScissorControl()
 	while (true) {
 		if(ScissorLiftControl)
 		{
-		/*	if (Scissortarget < 12341234123412341234123412341234123412341243123412341234)
+			if (Scissortarget > MAX_SCISSORHEIGHT)
 			{
-				Scissortarget = Scissortarget;
+				Scissortarget = MAX_SCISSORHEIGHT;
 			}
-			if(Scissortarget > 123412341234123412341234)
+			if(Scissortarget < MIN_SCISSORHEIGHT)
 			{
-				Scissortarget = Scissortarget;
-			}*/
+				Scissortarget = MIN_SCISSORHEIGHT;
+			}
 			int currentvalueRight = SensorValue[RightliftSensor];
-			ScissorerrorRight = Scissortarget - abs(currentvalueRight);
+			ScissorerrorRight = Scissortarget - currentvalueRight;
 			ScissorLiftRight = ScissorerrorRight
-			if (abs(ScissorLiftRight) > 127) {
+			if (ScissorLiftRight > 127) {
 				ScissorLiftRight = 127;
 			}
-			if (abs(ScissorLiftRight) < 20)
+			else if (ScissorLiftRight < -127)
+			{
+				scissorLiftRight = -127;
+			}
+			else if (abs(ScissorLiftRight) < 20)
 				ScissorLiftRight = 0;
 
 
 		int currentvalueLeft = SensorValue[LeftLiftSensor];
 		scissorerrorLeft = Scissortarget - abs(currentvalueLeft);
 		ScissorLiftLeft = ScissorerrorLeft
-					if (abs(ScissorLiftLeft) > 127) {
+					if (ScissorLiftLeft > 127) {
 				ScissorLiftLeft = 127;
 			}
-			if (abs(ScissorLiftLeft) < 20)
+			else if (ScissorLiftLeft < -127)
+			{
+				ScissorLiftLeft = -127;
+			}
+			else if (abs(ScissorLiftLeft) < 20)
 				ScissorLiftLeft = 0;
 
 
 
 		//Sensors Moving to fast
-				if (abs(SensorValue[LeftLiftSensor]) > abs(SensorValue[RightLiftSensor]) + buffer)
+	/*			if (abs(SensorValue[LeftLiftSensor]) > abs(SensorValue[RightLiftSensor]) + buffer)
 				{
 					ScissorLiftLeft -= 5;
 				}
@@ -100,9 +109,9 @@ task ScissorControl()
 			}
 			if (abs(SensorValue[RightLiftSensor}) < abs(SensorValue[LeftLiftSensor]) + buffer)
 			{
-				ScissorLiftRight += 5;
+			ScissorLiftRight += 5;
 			}
-
+*/
 			motorReq[rightlift] = ScissorLiftRight;
 			motorReq[leftlift] = ScissorLiftLeft;
 		}
