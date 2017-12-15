@@ -40,7 +40,7 @@ void testauto();
 
 
 
-const int MAX_SCISSORHEIGHT = 4100;
+const int MAX_SCISSORHEIGHT = 1500; // This is maximum change in potentiometer value
 const int MIN_SCISSORHEIGHT = 0;
 const int MAX_FOURBARHEIGHT = 4000;
 const int MIN_FOURBARHEIGHT = 0;
@@ -52,10 +52,9 @@ const int TURN_MAXPOWER = 80;
 const float P_FACTOR = .2;
 const int WAIT_FOR_STOP = 200;
 int Scissortarget = 0;
-int FourBarTarget
+int FourBarTarget = 0;
 bool ScissorLiftControl = false;
 bool FourControl = false;
-
 int min(int a, int b) {
 	if (a > b)
 		return b;
@@ -79,7 +78,7 @@ int max(int a, int b) {
 
 void pre_auton()
 {
-	LCD();
+//	LCD();
   // Set bStopTasksBetweenModes to false if you want to keep user created tasks
   // running between Autonomous and Driver controlled modes. You will need to
   // manage all user created tasks if set to false.
@@ -145,14 +144,22 @@ task FourBarControl()
 }
 task ScissorControl()
 {
+	int scissorLeftInitValue = SensorValue[LeftLiftSensor]; // Scissor height will be an offset from these values
+	int scissorRightInitValue = SensorValue[RightLiftSensor];
 	int ScissorErrorRight = 0;
   int ScissorErrorLeft = 0;
   int ScissorLiftLeft = 0;
   int ScissorLiftRight = 0;
-  int buffer = 100;
+//  int buffer = 100;
+
 	while (true) {
 		if(ScissorLiftControl)
 		{
+			// Potentiometer values decrease with height, so we subtract target height from the initial value
+		  //  to get target potentiometer value
+			int lefttarget = scissorLeftInitValue - Scissortarget;
+			int righttarget = scissorRightInitValue - Scissortarget;
+
 			if (Scissortarget > MAX_SCISSORHEIGHT)
 			{
 				Scissortarget = MAX_SCISSORHEIGHT;
@@ -161,23 +168,23 @@ task ScissorControl()
 			{
 				Scissortarget = MIN_SCISSORHEIGHT;
 			}
-			int currentvalueRight = SensorValue[RightliftSensor];
-			ScissorerrorRight = Scissortarget - currentvalueRight;
-			ScissorLiftRight = ScissorerrorRight/2
+			int currentvalueRight = SensorValue[RightLiftSensor];
+			ScissorErrorRight = righttarget - currentvalueRight;
+			ScissorLiftRight = ScissorErrorRight/2;
 			if (ScissorLiftRight > 127) {
 				ScissorLiftRight = 127;
 			}
 			else if (ScissorLiftRight < -127)
 			{
-				scissorLiftRight = -127;
+				ScissorLiftRight = -127;
 			}
 			else if (abs(ScissorLiftRight) < 20)
 				ScissorLiftRight = 0;
 
 
 		int currentvalueLeft = SensorValue[LeftLiftSensor];
-		scissorerrorLeft = Scissortarget - abs(currentvalueLeft);
-		ScissorLiftLeft = ScissorerrorLeft/2
+		ScissorErrorLeft = lefttarget - abs(currentvalueLeft);
+		ScissorLiftLeft = ScissorErrorLeft/2;
 					if (ScissorLiftLeft > 127) {
 				ScissorLiftLeft = 127;
 			}
@@ -209,8 +216,13 @@ task ScissorControl()
 			ScissorLiftRight += 5;
 			}
 */
-			motorReq[rightlift] = ScissorLiftRight;
-			motorReq[leftlift] = ScissorLiftLeft;
+			if (Scissortarget == MIN_SCISSORHEIGHT) { // Turn off motors if we need min height
+				motorReq[RightLift] = 0;
+				motorReq[LeftLift] = 0;
+			} else {
+				motorReq[RightLift] = -ScissorLiftRight; // Negative sign since pot values decrease with height
+				motorReq[LeftLift] = -ScissorLiftLeft;
+			}
 		}
 		wait1Msec(MOTOR_TASK_DELAY);
 	}
@@ -509,19 +521,19 @@ task usercontrol()
 
 		if (vexRT[Btn8UXmtr2] == 1)
 		{
-			Scissortarget = min(MAX_SCISSORHEIGHT, Scissortarget + 30);
+			Scissortarget = min(MAX_SCISSORHEIGHT, Scissortarget + 1); //Decreased from 30 to 1, the loop is execute many times per seconds, so the value was changing too fast
 			ScissorLiftControl = true;
 		}
 		else if(vexRT[Btn8DXmtr2] == 1)
 		{
-			Scissortarget = max(MIN_SCISSORHEIGHT, Scissortarget - 30);
+			Scissortarget = max(MIN_SCISSORHEIGHT, Scissortarget - 1);
 			ScissorLiftControl = true;
 		}
-		else
-		{
-			motor[RightLift] = 0;
-			motor[LeftLift] = 0;
-		}
+//		else
+//		{
+//			motor[RightLift] = 0;
+//			motor[LeftLift] = 0;
+//		}
 
 
 		if(vexRT[Btn7UXmtr2] == 1)
