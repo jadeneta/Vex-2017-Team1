@@ -34,8 +34,9 @@
 #include "Vex_Competition_Includes.c"
 #include "slew motor program.c"
 #include "LCD_Control.c"
+#include "RedAuto.c"
 #define DEADBAND 20
-void testauto();
+
 
 
 
@@ -482,7 +483,7 @@ task autonomous()
   // ..........................................................................
 
   // Remove this function call once you have "real" code.
-  AutonomousCodePlaceholderForTesting();
+  RedAuto();
 }
 
 /*---------------------------------------------------------------------------*/
