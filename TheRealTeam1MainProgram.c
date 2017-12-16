@@ -40,7 +40,7 @@ void testauto();
 
 
 
-const int MAX_SCISSORHEIGHT = 1500; // This is maximum change in potentiometer value
+const int MAX_SCISSORHEIGHT = 2000; // This is maximum change in potentiometer value
 const int MIN_SCISSORHEIGHT = 0;
 const int MAX_FOURBARHEIGHT = 4000;
 const int MIN_FOURBARHEIGHT = 0;
@@ -150,7 +150,7 @@ task ScissorControl()
   int ScissorErrorLeft = 0;
   int ScissorLiftLeft = 0;
   int ScissorLiftRight = 0;
-//  int buffer = 100;
+  int buffer = 100;
 
 	while (true) {
 		if(ScissorLiftControl)
@@ -158,7 +158,7 @@ task ScissorControl()
 			// Potentiometer values decrease with height, so we subtract target height from the initial value
 		  //  to get target potentiometer value
 			int lefttarget = scissorLeftInitValue - Scissortarget;
-			int righttarget = scissorRightInitValue - Scissortarget;
+			int righttarget = scissorRightInitValue - Scissortarget - 150;
 
 			if (Scissortarget > MAX_SCISSORHEIGHT)
 			{
@@ -521,12 +521,12 @@ task usercontrol()
 
 		if (vexRT[Btn8UXmtr2] == 1)
 		{
-			Scissortarget = min(MAX_SCISSORHEIGHT, Scissortarget + 1); //Decreased from 30 to 1, the loop is execute many times per seconds, so the value was changing too fast
+			Scissortarget = min(MAX_SCISSORHEIGHT, Scissortarget + 10); //Decreased from 30 to 1, the loop is execute many times per seconds, so the value was changing too fast
 			ScissorLiftControl = true;
 		}
 		else if(vexRT[Btn8DXmtr2] == 1)
 		{
-			Scissortarget = max(MIN_SCISSORHEIGHT, Scissortarget - 1);
+			Scissortarget = max(MIN_SCISSORHEIGHT, Scissortarget - 10);
 			ScissorLiftControl = true;
 		}
 //		else
@@ -584,6 +584,6 @@ task usercontrol()
   motor(leftbackwheel) = LeftDrive;
   motor(rightfrontwheel) = RightDrive;
   motor(rightbackwheel) = RightDrive;
-  // wait1Msec(MOTOR_TASK_DELAY);
+   wait1Msec(MOTOR_TASK_DELAY);
 	}
 }
