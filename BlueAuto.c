@@ -1,5 +1,5 @@
 
-void RedAuto()
+void BlueAuto()
 {
 motorReq[ConeIntake] = 50;
 FourBarTarget = MAX_FOURBARHEIGHT;
@@ -12,10 +12,9 @@ moveBackwardWithSensor(1630);
 motorReq[ConeIntake] = -127
 wait1Msec(200);
 motorReq[ConeIntake] = 0;
-wait1Msec(200);
-turnLeftWithSensor(1150);
+turnRightWithSensor(1150);
 moveForwardWithSensor(400);
-turnLeftWithSensor(TURN_90+40);
+turnRightWithSensor(TURN_90+40);
 //MogoTarget = 3000;
 motorReq[leftfrontwheel] = 127;
 motorReq[leftbackwheel] = 127;

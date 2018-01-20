@@ -5,6 +5,10 @@
 #pragma config(Sensor, in5,    MogoSensor,     sensorPotentiometer)
 #pragma config(Sensor, dgtl1,  rightshaft,     sensorQuadEncoder)
 #pragma config(Sensor, dgtl3,  leftshaft,      sensorQuadEncoder)
+#pragma config(Sensor, dgtl6,  Red_LED,        sensorLEDtoVCC)
+#pragma config(Sensor, dgtl7,  Red_Auto,       sensorDigitalIn)
+#pragma config(Sensor, dgtl11, BLue_LED,       sensorLEDtoVCC)
+#pragma config(Sensor, dgtl12, Blue_Auto,      sensorDigitalIn)
 #pragma config(Motor,  port1,           ConeIntake,    tmotorVex393_HBridge, openLoop)
 #pragma config(Motor,  port2,           rightbackwheel, tmotorVex393_MC29, openLoop, reversed)
 #pragma config(Motor,  port3,           rightfrontwheel, tmotorVex393_MC29, openLoop, reversed)
@@ -34,24 +38,11 @@
 #include "LCD_Control.c"
 #define DEADBAND 20
 
+//#include "Chassis1Constants.c"
+
+#include "Chassis2Constants.c"
 
 
-
-
-const int MAX_SCISSORHEIGHT = 2000; // This is maximum change in potentiometer value
-const int MIN_SCISSORHEIGHT = 0;
-const int MAX_FOURBARHEIGHT = 4000;
-const int MIN_FOURBARHEIGHT = 0;
-
-const float SLEW_OFFSET = .8;
-const int MAXPOWER = 90;
-const int TURN_MAXPOWER = 80;
-const float P_FACTOR = .2;
-const int WAIT_FOR_STOP = 200;
-int Scissortarget = 0;
-int FourBarTarget = 0;
-bool ScissorLiftControl = false;
-bool FourControl = false;
 int min(int a, int b) {
 	if (a > b)
 		return b;
@@ -63,31 +54,45 @@ int max(int a, int b) {
 		return a;
 	return b;
 }
-/*---------------------------------------------------------------------------*/
-/*                          Pre-Autonomous Functions                         */
-/*                                                                           */
-/*  You may want to perform some actions before the competition starts.      */
-/*  Do them in the following function.  You must return from this function   */
-/*  or the autonomous and usercontrol tasks will not be started.  This       */
-/*  function is only called once after the cortex has been powered on and    */
-/*  not every time that the robot is disabled.                               */
-/*---------------------------------------------------------------------------*/
+//---------------------------------------------------------------------------*/
+//                          Pre-Autonomous Functions                         */
+//                                                                           */
+//  You may want to perform some actions before the competition starts.      */
+//  Do them in the following function.  You must return from this function   */
+//  or the autonomous and usercontrol tasks will not be started.  This       */
+//  function is only called once after the cortex has been powered on and    */
+//  not every time that the robot is disabled.                               */
+//---------------------------------------------------------------------------*/
 
 void pre_auton()
 {
-//	LCD();
-  // Set bStopTasksBetweenModes to false if you want to keep user created tasks
-  // running between Autonomous and Driver controlled modes. You will need to
-  // manage all user created tasks if set to false.
-  bStopTasksBetweenModes = true;
-
+	//	LCD();
+	// Set bStopTasksBetweenModes to false if you want to keep user created tasks
+	// running between Autonomous and Driver controlled modes. You will need to
+	// manage all user created tasks if set to false.
+	//StopTasksBetweenModes = true;
+    if(SensorValue[Red_Auto] == 0)
+  {
+  	SensorValue[Red_LED] = 1;
+  	SensorValue[Blue_LED] =0;
+  }
+  else if(SensorValue[Blue_Auto] == 0)
+  {
+  	SensorValue[Blue_LED] = 1;
+  	SensorValue[Red_LED] = 0;
+  }
+  else
+  {
+  	SensorValue[Blue_LED] =0;
+  	SensorValue[Red_LED] = 0;
+	}
 	// Set bDisplayCompetitionStatusOnLcd to false if you don't want the LCD
 	// used by the competition include file, for example, you might want
 	// to display your team name on the LCD in this function.
 	// bDisplayCompetitionStatusOnLcd = false;
 
-  // All activities that occur before the competition starts
-  // Example: clearing encoders, setting servo positions, ...
+	// All activities that occur before the competition starts
+	// Example: clearing encoders, setting servo positions, ...
 }
 
 /*---------------------------------------------------------------------------*/
@@ -99,6 +104,48 @@ void pre_auton()
 /*                                                                           */
 /*  You must modify the code to add your own robot specific commands here.   */
 /*---------------------------------------------------------------------------*/
+task MobileGoalControl()
+{
+	int MogoError = 0;
+	int MogoSpeed = 0;
+	while(true)
+	{
+		if(MobileGoal)
+		{
+			if (MogoTarget > MAX_MOGO)
+			{
+				MogoTarget = MAX_MOGO;
+			}
+			if (MogoTarget < MIN_MOGO)
+			{
+				MogoTarget = MIN_MOGO;
+			}
+			// Defining Our Current value
+			int CurrentMogoValue = SensorValue[MogoSensor];
+			// Defining Error
+			MogoError = MogoTarget - CurrentMogoValue;
+			if (abs(MogoError) < 400)
+				MogoError = 0;
+			//setting Mogo Speed
+			MogoSpeed = MogoError/7;
+
+			if (MogoSpeed > 127)
+			{
+				MogoSpeed = 127;
+			}
+			else if (MogoSpeed < -127)
+			{
+				MogoSpeed = -127;
+			}
+			else if (abs(MogoSpeed) < 25)
+			{
+				MogoSpeed = 0;
+			}
+		}
+		motorReq[Mogo] = -MogoSpeed;
+		wait1Msec(MOTOR_TASK_DELAY);
+	}
+}
 task FourBarControl()
 {
 	int FourBarError = 0; // Distance away from target, sets the value
@@ -121,7 +168,7 @@ task FourBarControl()
 			// Setting out Error (Current value - Target value)
 			FourBarError = FourBarTarget - CurrentFourBarValue;
 			// Setting speed to the error
-			FourBarSpeed = FourBarError;
+			FourBarSpeed = FourBarError/4;
 
 			if (FourBarSpeed > 127) // Motor Shall not pass max speed
 			{
@@ -144,30 +191,30 @@ task ScissorControl()
 	int scissorLeftInitValue = SensorValue[LeftLiftSensor]; // Scissor height will be an offset from these values
 	int scissorRightInitValue = SensorValue[RightLiftSensor];
 	int ScissorErrorRight = 0;
-  int ScissorErrorLeft = 0;
-  int ScissorLiftLeft = 0;
-  int ScissorLiftRight = 0;
-  int buffer = 100;
+	int ScissorErrorLeft = 0;
+	int ScissorLiftLeft = 0;
+	int ScissorLiftRight = 0;
+	int buffer = 100;
 
 	while (true) {
 		if(ScissorLiftControl)
 		{
 			// Potentiometer values decrease with height, so we subtract target height from the initial value
-		  //  to get target potentiometer value
+			//  to get target potentiometer value
 			int lefttarget = scissorLeftInitValue - Scissortarget;
-			int righttarget = scissorRightInitValue - Scissortarget - 150;
+			int righttarget = scissorRightInitValue + Scissortarget;
 
-			if (Scissortarget > MAX_SCISSORHEIGHT)
+/*			if (Scissortarget > MAX_SCISSORHEIGHT)
 			{
 				Scissortarget = MAX_SCISSORHEIGHT;
 			}
 			if(Scissortarget < MIN_SCISSORHEIGHT)
 			{
 				Scissortarget = MIN_SCISSORHEIGHT;
-			}
+			}*/
 			int currentvalueRight = SensorValue[RightLiftSensor];
 			ScissorErrorRight = righttarget - currentvalueRight;
-			ScissorLiftRight = ScissorErrorRight/2;
+			ScissorLiftRight = ScissorErrorRight/3;
 			if (ScissorLiftRight > 127) {
 				ScissorLiftRight = 127;
 			}
@@ -179,54 +226,54 @@ task ScissorControl()
 				ScissorLiftRight = 0;
 
 
-		int currentvalueLeft = SensorValue[LeftLiftSensor];
-		ScissorErrorLeft = lefttarget - abs(currentvalueLeft);
-		ScissorLiftLeft = ScissorErrorLeft/2;
-					if (ScissorLiftLeft > 127) {
+			int currentvalueLeft = SensorValue[LeftLiftSensor];
+			ScissorErrorLeft = lefttarget - abs(currentvalueLeft);
+			ScissorLiftLeft = ScissorErrorLeft/3;
+			if (ScissorLiftLeft > 127) {
 				ScissorLiftLeft = 127;
 			}
 			else if (ScissorLiftLeft < -127)
 			{
 				ScissorLiftLeft = -127;
 			}
-			else if (abs(ScissorLiftLeft) < 25)
+			else if (abs(ScissorLiftLeft) < 20)
 				ScissorLiftLeft = 0;
 
 
 
-		//Sensors Moving to fast
-	/*			if (abs(SensorValue[LeftLiftSensor]) > abs(SensorValue[RightLiftSensor]) + buffer)
-				{
-					ScissorLiftLeft -= 5;
-				}
-				else if (abs(SensorValue[LeftLiftSensor]) < abs(SensorValue[RightLiftSensor]) + buffer)
+			//Sensors Moving to fast
+			/*			if (abs(SensorValue[LeftLiftSensor]) > abs(SensorValue[RightLiftSensor]) + buffer)
 			{
-				ScissorLiftLeft += 5;
+			ScissorLiftLeft -= 5;
+			}
+			else if (abs(SensorValue[LeftLiftSensor]) < abs(SensorValue[RightLiftSensor]) + buffer)
+			{
+			ScissorLiftLeft += 5;
 			}
 			// Right Sensor moving too fast
 			if (abs(SensorValue[RightLiftSensor]) > abs(SensorValue[LeftLiftSensor]) + buffer)
 			{
-				ScissorLiftRight -= 5;
+			ScissorLiftRight -= 5;
 			}
 			if (abs(SensorValue[RightLiftSensor}) < abs(SensorValue[LeftLiftSensor]) + buffer)
 			{
 			ScissorLiftRight += 5;
 			}
-*/
-//			if (Scissortarget == MIN_SCISSORHEIGHT) { // Turn off motors if we need min height
-//				motorReq[RightLift] = 0;
-//				motorReq[LeftLift] = 0;
-//			} else {
-				motorReq[RightLift] = -ScissorLiftRight; // Negative sign since pot values decrease with height
-				motorReq[LeftLift] = -ScissorLiftLeft;
-//			}
+			*/
+			//			if (Scissortarget == MIN_SCISSORHEIGHT) { // Turn off motors if we need min height
+			//				motorReq[RightLift] = 0;
+			//				motorReq[LeftLift] = 0;
+			//			} else {
+			motorReq[RightLift] = ScissorLiftRight; // Negative sign since pot values decrease with height
+			motorReq[LeftLift] = -ScissorLiftLeft;
+			//			}
 		}
 		wait1Msec(MOTOR_TASK_DELAY);
 	}
 }
 
 
-	void moveforward_right(int forward) {
+void moveforward_right(int forward) {
 
 	motor[rightfrontwheel] = forward;
 	motor[rightbackwheel] = forward;
@@ -244,32 +291,32 @@ void movebackward_left(int backward) {
 	motor[leftbackwheel] = -backward;
 }
 void movebackward_right(int backward) {
-	motor[rightfrontwheel] = backward;
-	motor[rightbackwheel] = backward;
+	motor[rightfrontwheel] = -backward;
+	motor[rightbackwheel]  =-backward;
 }
 void movebackward(int backward) {
 	movebackward_right(backward);
 	movebackward_left(backward);
 }
 void turnleft_left(int left) {
-	motor[leftfrontwheel] = -left;
-	motor[leftbackwheel] = -left;
+	motorReq[leftfrontwheel] = -left;
+	motorReq[leftbackwheel] = -left;
 }
 void turnleft_right(int left) {
-	motor[rightfrontwheel] = -left;
-	motor[rightbackwheel] = -left;
+	motorReq[rightfrontwheel] = -left;
+	motorReq[rightbackwheel] = -left;
 }
 void turnleft(int left) {
 	turnleft_right(left);
 	turnleft_left(left);
 }
 void turnright_left(int right) {
-	motor[leftfrontwheel] = right;
-	motor[leftbackwheel] = right;
+	motorReq[leftfrontwheel] = right;
+	motorReq[leftbackwheel] = right;
 }
 void turnright_right(int right) {
-	motor[rightfrontwheel] = right;
-	motor[rightbackwheel] = right;
+	motorReq[rightfrontwheel] = right;
+	motorReq[rightbackwheel] = right;
 }
 void turnright(int right) {
 	turnright_right(right);
@@ -277,62 +324,63 @@ void turnright(int right) {
 }
 void turnLeftWithSensor(int rotations) {
 	SensorValue[in1] = 0;
-	int min_rightpower = 38.5;
-	int min_leftpower = 38.5;
+	int min_rightpower = 25.5;
+	int min_leftpower = 25.5;
 	int leftmultiplier = 1;
 	int rightmultiplier = -1;
 	while(abs(SensorValue[in1]) < rotations)
 	{
-				int leftpower = 0;
+		int leftpower = 0;
 		int rightpower = 0;
 
 		int error = rotations - abs(SensorValue[in1]);
-			leftpower = error * P_FACTOR;
-			rightpower = error * P_FACTOR;
-			if (leftpower < min_leftpower)
-				leftpower = min_leftpower;
-			leftpower = min(TURN_MAXPOWER, leftpower);
+		leftpower = error * P_FACTOR;
+		rightpower = error * P_FACTOR;
+		if (leftpower < min_leftpower)
+			leftpower = min_leftpower;
+		leftpower = min(TURN_MAXPOWER, leftpower);
 
 		if (rightpower < min_rightpower)
-				rightpower = min_rightpower;
-			rightpower = min(TURN_MAXPOWER, rightpower);
+			rightpower = min_rightpower;
+		rightpower = min(TURN_MAXPOWER, rightpower);
 
-			turnleft_left(leftpower * leftmultiplier);
+		turnleft_left(leftpower * leftmultiplier);
 		turnleft_right(rightpower * rightmultiplier);
-	//	wait1Msec(MOTOR_TASK_DELAY);
+		wait1Msec(MOTOR_TASK_DELAY);
 	}
-		turnleft(0);
+	turnleft(0);
 	wait1Msec(WAIT_FOR_STOP);
-		}
-		void turnRightWithSensor(int rotations) {
+}
+
+void turnRightWithSensor(int rotations) {
 	SensorValue[in1] = 0;
-	int min_rightpower = 38.5;
-	int min_leftpower = 38.5;
-	int leftmultiplier = -1;
-	int rightmultiplier = 1;
+	int min_rightpower = 25.5;
+	int min_leftpower = 25.5;
+	int leftmultiplier = 1;
+	int rightmultiplier = -1;
 	while(abs(SensorValue[in1]) < rotations)
 	{
-				int leftpower = 0;
+		int leftpower = 0;
 		int rightpower = 0;
 
 		int error = rotations - abs(SensorValue[in1]);
-			leftpower = error * P_FACTOR;
-			rightpower = error * P_FACTOR;
-			if (leftpower < min_leftpower)
-				leftpower = min_leftpower;
-			leftpower = min(TURN_MAXPOWER, leftpower);
+		leftpower = error * P_FACTOR;
+		rightpower = error * P_FACTOR;
+		if (leftpower < min_leftpower)
+			leftpower = min_leftpower;
+		leftpower = min(TURN_MAXPOWER, leftpower);
 
 		if (rightpower < min_rightpower)
-				rightpower = min_rightpower;
-			rightpower = min(TURN_MAXPOWER, rightpower);
+			rightpower = min_rightpower;
+		rightpower = min(TURN_MAXPOWER, rightpower);
 
-			turnright_left(leftpower * leftmultiplier);
+		turnright_left(leftpower * leftmultiplier);
 		turnright_right(rightpower * rightmultiplier);
-	//	wait1Msec(MOTOR_TASK_DELAY);
+		wait1Msec(MOTOR_TASK_DELAY);
 	}
-		turnleft(0);
+	turnleft(0);
 	wait1Msec(WAIT_FOR_STOP);
-		}
+}
 
 void moveBackwardWithSensor(int rotations) {
 	SensorValue[leftshaft] = 0;
@@ -392,7 +440,7 @@ void moveBackwardWithSensor(int rotations) {
 		movebackward_right(rightpower * rightmultiplier);
 		lastSensorValueLeft = abs(SensorValue[leftshaft]);
 		lastSensorValueRight = abs(SensorValue[rightshaft]);
-	//	wait1Msec(MOTOR_TASK_DELAY);
+		wait1Msec(MOTOR_TASK_DELAY);
 	}
 	movebackward(0);
 
@@ -402,23 +450,22 @@ void moveForwardWithSensor(int rotations) {
 
 	SensorValue[leftshaft] = 0;
 	SensorValue[rightshaft] = 0;
-	int min_leftpower = 25;
-	int min_rightpower = 25;
+	int min_leftpower = 50;
+	int min_rightpower = 50;
 	int lastSensorValueRight = 0;
 	int lastSensorValueLeft = 0;
 	int leftmultiplier = 1;
 	int rightmultiplier = 1;
-	int buffer = 20;
+	int buffer = 40;
 	float slowdown = .98;
-
-
+  int maxloop = 3000/MOTOR_TASK_DELAY;
+  int iloop = 0;
 
 
 
 	while ((abs(SensorValue[leftshaft])+ abs(SensorValue[rightshaft]))/2 < rotations * SLEW_OFFSET)	 {
 		int leftpower = 0;
 		int rightpower = 0;
-
 		if (abs(SensorValue[leftshaft]) < rotations) {
 
 			int error = rotations - SensorValue[leftshaft];
@@ -439,7 +486,7 @@ void moveForwardWithSensor(int rotations) {
 				min_rightpower += 5;
 			if (rightpower < min_rightpower)
 				rightpower = min_rightpower;
-	rightpower = min(MAXPOWER, rightpower);
+			rightpower = min(MAXPOWER, rightpower);
 
 		}
 		// left sensor moving too fast
@@ -465,23 +512,39 @@ void moveForwardWithSensor(int rotations) {
 		moveforward_right(rightpower * rightmultiplier);
 		lastSensorValueLeft = abs(SensorValue[leftshaft]);
 		lastSensorValueRight = abs(SensorValue[rightshaft]);
-//		wait1Msec(MOTOR_TASK_DELAY);
+		iloop++;
+		wait1Msec(MOTOR_TASK_DELAY);
+		if(iloop > Maxloop)
+			break;
 	}
 	moveforward(0);
-//	wait1Msec(WAIT_FOR_STOP);
+		wait1Msec(WAIT_FOR_STOP);
 }
 #include "RedAuto.c"
-
+#include "BlueAuto.c"
 task autonomous()
 {
-	LCDAutonomous();
+	startTask(MotorSlewRateTask);
+		startTask(ScissorControl);
+	startTask(FourBarControl);
+	startTask(MobileGoalControl);
 
-  // ..........................................................................
-  // Insert user code here.
-  // ..........................................................................
+		ScissorLiftControl = false;
+		FourControl = true;
+		MobileGoal = true;
+  if(SensorValue[Red_Auto] == 1)
+  {
+  	RedAuto();
+  }
+  else if(SensorValue[Blue_Auto] == 1)
+  {
+  	BlueAuto();
+  }
 
-  // Remove this function call once you have "real" code.
-  RedAuto();
+	stopTask(ScissorControl);
+	stopTask(FourBarControl);
+	stopTask(mobileGoalControl);
+	stopTask(MotorSlewRateTask);
 }
 
 /*---------------------------------------------------------------------------*/
@@ -496,115 +559,161 @@ task autonomous()
 
 task usercontrol()
 {
-  startTask(MotorSlewRateTask);
+	bool tankControl=false;
+	startTask(MotorSlewRateTask);
 	startTask(ScissorControl);
 	startTask(FourBarControl);
-//ScissorLiftControl = false;
-	FourControl = true;
+	startTask(MobileGoalControl);
+	ScissorLiftControl = true;
+		FourControl = true;
+		MobileGoal = true;
 	while(true)
 	{
-    LCDUserControl();
+		LCDUserControl();
 		int RightDrive = 0;
 		int LeftDrive = 0;
-		if(abs(vexRT[Ch2])>DEADBAND)
-		{
-			LeftDrive = vexRT[Ch2];
-			RightDrive = vexRT[Ch2];
-		}
-		else if (abs(vexRT[Ch4])>DEADBAND)
-		{
-			LeftDrive = vexRT[Ch4];
-			RightDrive = -vexRT[Ch4];
+
+		if (vexRT[Btn6U] == 1) tankControl=true;
+		if (vexRT[Btn6D] == 1) tankControl=false;
+
+		if (tankControl) {
+			if(abs(vexRT[Ch2])>DEADBAND)
+			{
+				RightDrive = vexRT[Ch2];
+			}
+		 	if (abs(vexRT[Ch3])>DEADBAND)
+			{
+				LeftDrive = vexRT[Ch3];
+			}
+		} else {
+			if(abs(vexRT[Ch2])>DEADBAND)
+			{
+				RightDrive = vexRT[Ch2];
+				LeftDrive = vexRT[Ch2];
+			}
+		 	if (abs(vexRT[Ch4])>DEADBAND)
+			{
+				LeftDrive = vexRT[Ch4];
+				RightDrive = -vexRT[Ch4]
+			}
 		}
 
- if (ScissorLiftControl)
- {
-		if (vexRT[Btn8UXmtr2] == 1)
+		if (ScissorLiftControl)
 		{
-			Scissortarget = min(MAX_SCISSORHEIGHT, Scissortarget + 10); //Decreased from 30 to 1, the loop is execute many times per seconds, so the value was changing too fast
-			ScissorLiftControl = true;
+			if (vexRT[Btn8UXmtr2] == 1)
+			{
+				Scissortarget = min(MAX_SCISSORHEIGHT, Scissortarget + 25); //Decreased from 30 to 1, the loop is execute many times per seconds, so the value was changing too fast
+				ScissorLiftControl = true;
+			}
+			else if(vexRT[Btn8DXmtr2] == 1)
+			{
+				Scissortarget = max(MIN_SCISSORHEIGHT, Scissortarget - 25);
+				ScissorLiftControl = true;
+			}
 		}
-		else if(vexRT[Btn8DXmtr2] == 1)
-		{
-			Scissortarget = max(MIN_SCISSORHEIGHT, Scissortarget - 10);
-			ScissorLiftControl = true;
-		}
-	}
-	else
+		else
 	{
-		if (vexRT[Btn8UXmtr2] == 1)
-		{
-			motorReq[RightLift] = 127;
-			motorReq[LeftLift] = 127;
-		}
-		else if (vexRT[Btn8DXmtr2] == 1)
-		{
-			motorReq[RightLift] = -50;
-			motorReq[LeftLift] = -50;
-		}
-		else
-		{
-			motorReq[RightLift] = 0;
-			motorReq[LeftLift] = 0;
-		}
- }
-
-		if(vexRT[Btn7UXmtr2] == 1)
-		{
-			motor[FourBar] = 127;
-		}
-		else if(vexRT[Btn7DXmtr2] == 1)
-		{
-			motor[FourBar] = -127;
-		}
-		else
-		{
-			motor[FourBar] = 0;
-		}
-		if(vexRT[Btn5UXmtr2] == 1)
-		{
-			motor[ConeIntake] = 127;
-		}
-		else if(vexRT[Btn5DXmtr2] == 1)
-		{
-			motor[ConeIntake] = -127;
-		}
-		else
-		{
-			motor[ConeIntake] =0;
-		}
-
-if(vexRT[Btn6U] == 1)
-{
-	ScissorLiftControl = true;
-}
-else if(vexRT[Btn6D] == 1)
-{
-	ScissorLiftControl = false;
-}
+			if (vexRT[Btn8UXmtr2] == 1)
+			{
+				motorReq[RightLift] = 127;
+				motorReq[LeftLift] = 127;
+			}
+			else if (vexRT[Btn8DXmtr2] == 1)
+			{
+				motorReq[RightLift] = -50;
+				motorReq[LeftLift] = -50;
+			}
+			else
+			{
+				motorReq[RightLift] = 0;
+				motorReq[LeftLift] = 0;
+			}
+			}
 
 
-   if(vexRT[Btn5U] == 1)
-   {
-      RedAuto();
-   }  // 7^3
-   if(vexRT[Btn7U] == 1)
-   {
-     motor[Mogo] = 127;
+			if(vexRT[Btn7UXmtr2] == 1)
+			{
+				FourBarTarget = min(MAX_FOURBARHEIGHT, FourBarTarget + 30);
+			}
+			else if(vexRT[Btn7DXmtr2] == 1)
+			{
+				FourBarTarget = max(MIN_FOURBARHEIGHT, FourBarTarget - 30);
+			}
+			else if(vexRT[Btn7RXmtr2] == 1)
+			{
+				FourBarTarget = FOUR_BAR_STRAIGHT;
+			}
 
-   }
-   else if(vexRT[Btn7D] == 1)
-   {
-     motor[Mogo] = -127;
-   }
-   else motor[Mogo] = 0;
+			if(vexRT[Btn5UXmtr2] == 1)
+			{
+				motor[ConeIntake] = 127;
+			}
+			else if(vexRT[Btn5DXmtr2] == 1)
+			{
+				motor[ConeIntake] = -100;
+			}
+			else
+			{
+				motor[ConeIntake] =0;
+			}
+
+			if(vexRT[Btn6UXmtr2] == 1)
+			{
+
+			}
+			else if(vexRT[Btn6DXmtr2] == 1)
+			{
+		  }
 
 
+			if(vexRT[Btn5U] == 1)
+			{
+				 if(SensorValue[Red_Auto] == 0)
+  {
+  	RedAuto();
+  }
+  else if(SensorValue[Blue_Auto] == 0)
+  {
+  	BlueAuto();
+  }
+			}  // 7^3
+		/*	 if(vexRT[Btn7U] == 1)
+			{
+			Mogotarget = min(MAX_MOGO, Mogotarget + 30); //Decreased from 30 to 1, the loop is execute many times per seconds, so the value was changing too fast
+			MobileGoal = true;
+			}
+			else if(vexRT[Btn7D] == 1)
+			{
+			MogoTarget = Max(MIN_MOGO, MogoTarget - 30);
+			MobileGoal = true;
+		  }*/
+			if(vexRT[Btn7U] == 1)
+			{
+				motorReq[Mogo] = -127;
+			}
+			else if(vexRT[Btn7D] == 1)
+			{
+				motorReq[Mogo] = 127;
+			}
+			else motorReq[Mogo] = 0;
 
-  motor(leftfrontwheel) = LeftDrive;
-  motor(leftbackwheel) = LeftDrive;
-  motor(rightfrontwheel) = RightDrive;
-  motor(rightbackwheel) = RightDrive;
-   wait1Msec(MOTOR_TASK_DELAY);
+			if (vexRT[Btn5D] == 1)
+			{
+				turnLEftWithSensor(TURN_90);
+			}
+
+/*if (vexRT[Btn5U] == 1)
+			{
+				ConeStack();
+			}
+*/
+
+
+			motorReq[leftfrontwheel] = LeftDrive;
+			motorReq[leftbackwheel] = LeftDrive;
+			motorReq[rightfrontwheel] = RightDrive;
+			motorReq[rightbackwheel] = RightDrive;
+			wait1Msec(MOTOR_TASK_DELAY);
+
+		}
 	}
-}
