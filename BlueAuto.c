@@ -10,11 +10,13 @@ MogoTarget = MAX_MOGO;
 wait1Msec(400);
 moveBackwardWithSensor(1630);
 motorReq[ConeIntake] = -127
-wait1Msec(200);
+wait1Msec(400);
 motorReq[ConeIntake] = 0;
 turnRightWithSensor(1150);
-moveForwardWithSensor(400);
+moveForwardWithSensor(300);
 turnRightWithSensor(TURN_90+40);
+moveBackwardWithSensor(150);
+wait1Msec(400);
 //MogoTarget = 3000;
 motorReq[leftfrontwheel] = 127;
 motorReq[leftbackwheel] = 127;

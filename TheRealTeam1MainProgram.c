@@ -1,4 +1,4 @@
-#pragma config(Sensor, in1,    Gyroscope,      sensorGyro)
+ #pragma config(Sensor, in1,    Gyroscope,      sensorGyro)
 #pragma config(Sensor, in2,    RightLiftSensor, sensorPotentiometer)
 #pragma config(Sensor, in3,    LeftLiftSensor, sensorPotentiometer)
 #pragma config(Sensor, in4,    FourBarSensor,  sensorPotentiometer)
@@ -71,7 +71,7 @@ void pre_auton()
 	// running between Autonomous and Driver controlled modes. You will need to
 	// manage all user created tasks if set to false.
 	//StopTasksBetweenModes = true;
-    if(SensorValue[Red_Auto] == 0)
+/*    if(SensorValue[Red_Auto] == 0)
   {
   	SensorValue[Red_LED] = 1;
   	SensorValue[Blue_LED] =0;
@@ -85,7 +85,7 @@ void pre_auton()
   {
   	SensorValue[Blue_LED] =0;
   	SensorValue[Red_LED] = 0;
-	}
+	}*/
 	// Set bDisplayCompetitionStatusOnLcd to false if you don't want the LCD
 	// used by the competition include file, for example, you might want
 	// to display your team name on the LCD in this function.
@@ -127,7 +127,7 @@ task MobileGoalControl()
 			if (abs(MogoError) < 400)
 				MogoError = 0;
 			//setting Mogo Speed
-			MogoSpeed = MogoError/7;
+			MogoSpeed = MogoError/2;
 
 			if (MogoSpeed > 127)
 			{
@@ -201,17 +201,17 @@ task ScissorControl()
 		{
 			// Potentiometer values decrease with height, so we subtract target height from the initial value
 			//  to get target potentiometer value
-			int lefttarget = scissorLeftInitValue - Scissortarget;
+			if (Scissortarget > 1500)
+			{
+				Scissortarget = 1500;
+			}
+			if(Scissortarget < 50)
+			{
+				Scissortarget = 50;
+			}
+			int lefttarget = scissorLeftInitValue - Scissortarget * 1.3;
 			int righttarget = scissorRightInitValue + Scissortarget;
 
-/*			if (Scissortarget > MAX_SCISSORHEIGHT)
-			{
-				Scissortarget = MAX_SCISSORHEIGHT;
-			}
-			if(Scissortarget < MIN_SCISSORHEIGHT)
-			{
-				Scissortarget = MIN_SCISSORHEIGHT;
-			}*/
 			int currentvalueRight = SensorValue[RightLiftSensor];
 			ScissorErrorRight = righttarget - currentvalueRight;
 			ScissorLiftRight = ScissorErrorRight/3;
@@ -239,34 +239,9 @@ task ScissorControl()
 			else if (abs(ScissorLiftLeft) < 20)
 				ScissorLiftLeft = 0;
 
-
-
-			//Sensors Moving to fast
-			/*			if (abs(SensorValue[LeftLiftSensor]) > abs(SensorValue[RightLiftSensor]) + buffer)
-			{
-			ScissorLiftLeft -= 5;
-			}
-			else if (abs(SensorValue[LeftLiftSensor]) < abs(SensorValue[RightLiftSensor]) + buffer)
-			{
-			ScissorLiftLeft += 5;
-			}
-			// Right Sensor moving too fast
-			if (abs(SensorValue[RightLiftSensor]) > abs(SensorValue[LeftLiftSensor]) + buffer)
-			{
-			ScissorLiftRight -= 5;
-			}
-			if (abs(SensorValue[RightLiftSensor}) < abs(SensorValue[LeftLiftSensor]) + buffer)
-			{
-			ScissorLiftRight += 5;
-			}
-			*/
-			//			if (Scissortarget == MIN_SCISSORHEIGHT) { // Turn off motors if we need min height
-			//				motorReq[RightLift] = 0;
-			//				motorReq[LeftLift] = 0;
-			//			} else {
 			motorReq[RightLift] = ScissorLiftRight; // Negative sign since pot values decrease with height
 			motorReq[LeftLift] = -ScissorLiftLeft;
-			//			}
+
 		}
 		wait1Msec(MOTOR_TASK_DELAY);
 	}
@@ -522,6 +497,7 @@ void moveForwardWithSensor(int rotations) {
 }
 #include "RedAuto.c"
 #include "BlueAuto.c"
+#include "SkillsAuto.c"
 task autonomous()
 {
 	startTask(MotorSlewRateTask);
@@ -532,14 +508,14 @@ task autonomous()
 		ScissorLiftControl = false;
 		FourControl = true;
 		MobileGoal = true;
-  if(SensorValue[Red_Auto] == 1)
-  {
+  //if(SensorValue[Red_Auto] == 1)
+ // {
   	RedAuto();
-  }
-  else if(SensorValue[Blue_Auto] == 1)
-  {
-  	BlueAuto();
-  }
+  //}
+ // else if(SensorValue[Blue_Auto] == 1)
+ // {
+  //	BlueAuto();
+//  }
 
 	stopTask(ScissorControl);
 	stopTask(FourBarControl);
@@ -668,25 +644,18 @@ task usercontrol()
 
 			if(vexRT[Btn5U] == 1)
 			{
-				 if(SensorValue[Red_Auto] == 0)
-  {
-  	RedAuto();
-  }
-  else if(SensorValue[Blue_Auto] == 0)
-  {
-  	BlueAuto();
-  }
+       SkillsAuto();
 			}  // 7^3
-		/*	 if(vexRT[Btn7U] == 1)
-			{
-			Mogotarget = min(MAX_MOGO, Mogotarget + 30); //Decreased from 30 to 1, the loop is execute many times per seconds, so the value was changing too fast
-			MobileGoal = true;
-			}
-			else if(vexRT[Btn7D] == 1)
-			{
-			MogoTarget = Max(MIN_MOGO, MogoTarget - 30);
-			MobileGoal = true;
-		  }*/
+			 //if(vexRT[Btn7U] == 1)
+			//{
+			//Mogotarget = min(MAX_MOGO, Mogotarget + 30); //Decreased from 30 to 1, the loop is execute many times per seconds, so the value was changing too fast
+			//MobileGoal = true;
+			//}
+			//else if(vexRT[Btn7D] == 1)
+			//{
+			//MogoTarget = Max(MIN_MOGO, MogoTarget - 30);
+			//MobileGoal = true;
+		  //}
 			if(vexRT[Btn7U] == 1)
 			{
 				motorReq[Mogo] = -127;
