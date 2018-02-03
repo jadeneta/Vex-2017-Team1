@@ -1,4 +1,4 @@
- #pragma config(Sensor, in1,    Gyroscope,      sensorGyro)
+#pragma config(Sensor, in1,    Gyroscope,      sensorGyro)
 #pragma config(Sensor, in2,    RightLiftSensor, sensorPotentiometer)
 #pragma config(Sensor, in3,    LeftLiftSensor, sensorPotentiometer)
 #pragma config(Sensor, in4,    FourBarSensor,  sensorPotentiometer)
@@ -32,6 +32,11 @@
 // Select Download method as "competition"
 #pragma competitionControl(Competition)
 
+const short autoChoiceRed=0;
+const short autoChoiceBlue=1;
+const short autoChoiceSkills=2;
+int autonomousChoice=autoChoiceRed;
+
 //Main competition background code...do not modify!
 #include "Vex_Competition_Includes.c"
 #include "slew motor program.c"
@@ -41,7 +46,6 @@
 //#include "Chassis1Constants.c"
 
 #include "Chassis2Constants.c"
-
 
 int min(int a, int b) {
 	if (a > b)
@@ -93,6 +97,7 @@ void pre_auton()
 
 	// All activities that occur before the competition starts
 	// Example: clearing encoders, setting servo positions, ...
+	startTask(LCD);
 }
 
 /*---------------------------------------------------------------------------*/
@@ -508,9 +513,20 @@ task autonomous()
 		ScissorLiftControl = false;
 		FourControl = true;
 		MobileGoal = true;
+		switch (autonomousChoice) {
+			case autoChoiceRed:
+				RedAuto();
+				break;
+			case autoChoiceBlue:
+				BlueAuto();
+				break;
+			case autoChoiceSkills:
+			  SkillsAuto();
+			  break;
+			}
   //if(SensorValue[Red_Auto] == 1)
  // {
-  	RedAuto();
+//  	RedAuto();
   //}
  // else if(SensorValue[Blue_Auto] == 1)
  // {
@@ -545,7 +561,7 @@ task usercontrol()
 		MobileGoal = true;
 	while(true)
 	{
-		LCDUserControl();
+//		LCDUserControl();
 		int RightDrive = 0;
 		int LeftDrive = 0;
 
@@ -644,7 +660,18 @@ task usercontrol()
 
 			if(vexRT[Btn5U] == 1)
 			{
-       SkillsAuto();
+				switch (autonomousChoice) {
+					case autoChoiceRed:
+						RedAuto();
+						break;
+					case autoChoiceBlue:
+						BlueAuto();
+						break;
+					case autoChoiceSkills:
+			  		SkillsAuto();
+			  		break;
+					}
+//       SkillsAuto();
 			}  // 7^3
 			 //if(vexRT[Btn7U] == 1)
 			//{

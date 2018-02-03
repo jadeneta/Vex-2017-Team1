@@ -21,13 +21,14 @@ motorReq[leftfrontwheel] = 127;
 motorReq[leftbackwheel] = 127;
 motorReq[rightfrontwheel] = 127;
 motorReq[rightbackwheel] = 127;
-wait1Msec(2000);
+wait1Msec(2500);
 motorReq[leftfrontwheel] = 0;
 motorReq[leftbackwheel] = 0;
 motorReq[rightfrontwheel] = 0;
 motorReq[rightbackwheel] = 0;
 MogoTarget = MIN_MOGO;
 wait1Msec(1000);
+moveBackwardWithSensor(75);
 MogoTarget = MAX_MOGO;
 moveBackwardWithSensor(500);
 }
