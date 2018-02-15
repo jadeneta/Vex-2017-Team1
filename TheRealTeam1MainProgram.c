@@ -129,10 +129,10 @@ task MobileGoalControl()
 			int CurrentMogoValue = SensorValue[MogoSensor];
 			// Defining Error
 			MogoError = MogoTarget - CurrentMogoValue;
-			if (abs(MogoError) < 400)
+			if (abs(MogoError) < 300)
 				MogoError = 0;
 			//setting Mogo Speed
-			MogoSpeed = MogoError/2;
+			MogoSpeed = MogoError/5;
 
 			if (MogoSpeed > 127)
 			{
@@ -147,7 +147,7 @@ task MobileGoalControl()
 				MogoSpeed = 0;
 			}
 		}
-		motorReq[Mogo] = -MogoSpeed;
+		motorReq[Mogo] = MogoSpeed;
 		wait1Msec(MOTOR_TASK_DELAY);
 	}
 }
@@ -556,7 +556,7 @@ task usercontrol()
 	startTask(ScissorControl);
 	startTask(FourBarControl);
 	startTask(MobileGoalControl);
-	ScissorLiftControl = true;
+	ScissorLiftControl = false;
 		FourControl = true;
 		MobileGoal = true;
 	while(true)
@@ -658,7 +658,7 @@ task usercontrol()
 		  }
 
 
-			if(vexRT[Btn5U] == 1)
+			if((vexRT[Btn6U] == 1) && (vexRT[Btn6D] == 1))
 			{
 				switch (autonomousChoice) {
 					case autoChoiceRed:
@@ -672,31 +672,38 @@ task usercontrol()
 			  		break;
 					}
 //       SkillsAuto();
-			}  // 7^3
-			 //if(vexRT[Btn7U] == 1)
-			//{
-			//Mogotarget = min(MAX_MOGO, Mogotarget + 30); //Decreased from 30 to 1, the loop is execute many times per seconds, so the value was changing too fast
-			//MobileGoal = true;
-			//}
-			//else if(vexRT[Btn7D] == 1)
-			//{
-			//MogoTarget = Max(MIN_MOGO, MogoTarget - 30);
-			//MobileGoal = true;
-		  //}
-			if(vexRT[Btn7U] == 1)
-			{
-				motorReq[Mogo] = -127;
 			}
-			else if(vexRT[Btn7D] == 1)
+
+			if(MobileGoal)
+			{
+			if ((vexRT[Btn7U] == 1)|| (vexRT[Btn5U] == 1)) // go in
+			{
+			Mogotarget = min(MAX_MOGO, Mogotarget + 30); //Decreased from 30 to 1, the loop is execute many times per seconds, so the value was changing too fast
+			MobileGoal = true;
+			}
+			else if ((vexRT[Btn7D] == 1) || (vexRT[Btn5D] == 1)) // go out
+			{
+			MogoTarget = Max(MIN_MOGO, MogoTarget - 30);
+			MobileGoal = true;
+		  }
+			}
+			else
+			{
+			if(vexRT[Btn7U] == 1) // go in
 			{
 				motorReq[Mogo] = 127;
 			}
-			else motorReq[Mogo] = 0;
-
-			if (vexRT[Btn5D] == 1)
+			else if(vexRT[Btn7D] == 1) // go out
 			{
-				turnLEftWithSensor(TURN_90);
+				motorReq[Mogo] = -127;
 			}
+			else motorReq[Mogo] = 0;
+		}
+
+//			if (vexRT[Btn5D] == 1)
+//			{
+//				turnLEftWithSensor(TURN_90);
+//			}
 
 /*if (vexRT[Btn5U] == 1)
 			{
