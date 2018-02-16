@@ -35,6 +35,7 @@ void waitForRelease()
 //MUST CALL THIS FUNCTION IN PRE_AUTO!!!!
 task LCD()
 {
+	bool debug=false;
 	bLCDBacklight = true;
 	//------------- Beginning of User Interface Code ---------------
 	//Clear LCD
@@ -67,16 +68,23 @@ task LCD()
 			break;
 		}
 
-		string mainBattery, backupBattery;
-		//Display the Primary Robot battery voltage
-		displayLCDString(1, 0, "P:");
-		sprintf(mainBattery, "%1.2f%c", nImmediateBatteryLevel/1000.0,'V'); //Build the value to be displayed
-		displayNextLCDString(mainBattery);
+		string mainBattery, backupBattery, slift;
+		if (debug) {
+			clearLCDLine(1);
+			sprintf(slift,"%d %d %d %d",SensorValue[LeftLiftSensor],SensorValue[RightLiftSensor], motorReq[LeftLift], motorReq[RightLift]);
+			displayLCDString(1,0,slift);
+		} else {
 
-		//Display the Backup battery voltage
-		displayLCDString(1, 8, "B:");
-		sprintf(backupBattery, "%1.2f%c", BackupBatteryLevel/1000.0, 'V');	//Build the value to be displayed
-		displayNextLCDString(backupBattery);
+			//Display the Primary Robot battery voltage
+			displayLCDString(1, 0, "P:");
+			sprintf(mainBattery, "%1.2f%c", nImmediateBatteryLevel/1000.0,'V'); //Build the value to be displayed
+			displayNextLCDString(mainBattery);
+
+			//Display the Backup battery voltage
+			displayLCDString(1, 8, "B:");
+			sprintf(backupBattery, "%1.2f%c", BackupBatteryLevel/1000.0, 'V');	//Build the value to be displayed
+			displayNextLCDString(backupBattery);
+		}
 
 		wait1Msec(200);
 	}

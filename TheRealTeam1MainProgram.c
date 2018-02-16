@@ -35,7 +35,7 @@
 const short autoChoiceRed=0;
 const short autoChoiceBlue=1;
 const short autoChoiceSkills=2;
-int autonomousChoice=autoChoiceRed;
+int autonomousChoice=autoChoiceSkills;
 
 //Main competition background code...do not modify!
 #include "Vex_Competition_Includes.c"
@@ -121,7 +121,7 @@ task MobileGoalControl()
 			{
 				MogoTarget = MAX_MOGO;
 			}
-			if (MogoTarget < MIN_MOGO)
+			if (MogoTarget < MIN_MOGO) // Completely out
 			{
 				MogoTarget = MIN_MOGO;
 			}
@@ -129,21 +129,27 @@ task MobileGoalControl()
 			int CurrentMogoValue = SensorValue[MogoSensor];
 			// Defining Error
 			MogoError = MogoTarget - CurrentMogoValue;
-			if (abs(MogoError) < 300)
+			if (abs(MogoError) < 200)
 				MogoError = 0;
 			//setting Mogo Speed
-			MogoSpeed = MogoError/5;
+			MogoSpeed = MogoError/2;
 
-			if (MogoSpeed > 127)
+			if (MogoSpeed > 127) // go in
 			{
 				MogoSpeed = 127;
 			}
-			else if (MogoSpeed < -127)
+			else if (MogoSpeed < -100) // go out
 			{
-				MogoSpeed = -127;
+				MogoSpeed = -100;
 			}
 			else if (abs(MogoSpeed) < 25)
 			{
+				MogoSpeed = 0;
+			}
+			if ( (MogoTarget <= MIN_MOGO) && (CurrentMogoValue <= MIN_MOGO) ) {
+				MogoSpeed = 0;
+			}
+			if ( (MogoTarget >= MAX_MOGO) && (CurrentMogoValue >= MAX_MOGO) ) {
 				MogoSpeed = 0;
 			}
 		}
@@ -157,6 +163,7 @@ task FourBarControl()
 	int FourBarSpeed = 0; //How fast four bar motor is moving
 	while(true)
 	{
+		int CurrentFourBarValue = SensorValue[FourBarSensor];
 		if(FourControl)
 		{
 			// Making sure nothing goes over the limit
@@ -169,7 +176,6 @@ task FourBarControl()
 				FourBarTarget = MIN_FOURBARHEIGHT;
 			}
 			// Setting what our current value is
-			int CurrentFourBarValue = SensorValue[FourBarSensor];
 			// Setting out Error (Current value - Target value)
 			FourBarError = FourBarTarget - CurrentFourBarValue;
 			// Setting speed to the error
@@ -185,6 +191,12 @@ task FourBarControl()
 			}
 			else if (abs(FourBarSpeed) < 20) //Keep motor from making stalling sound
 			{
+				FourBarSpeed = 0;
+			}
+			if ( (FourBarTarget <= MIN_FOURBARHEIGHT) && (CurrentFourBarValue <= MIN_FOURBARHEIGHT) ) {
+				FourBarSpeed = 0;
+			}
+			if ( (FourBarTarget >= MAX_FOURBARHEIGHT) && (CurrentFourBarValue >= MAX_FOURBARHEIGHT) ) {
 				FourBarSpeed = 0;
 			}
 		}
@@ -210,45 +222,54 @@ task ScissorControl()
 			{
 				Scissortarget = 1500;
 			}
-			if(Scissortarget < 50)
+			if(Scissortarget < 0)
 			{
-				Scissortarget = 50;
+				Scissortarget = 0;
 			}
-			int lefttarget = scissorLeftInitValue - Scissortarget * 1.3;
+			int lefttarget = scissorLeftInitValue - Scissortarget*1.4;
 			int righttarget = scissorRightInitValue + Scissortarget;
 
 			int currentvalueRight = SensorValue[RightLiftSensor];
 			ScissorErrorRight = righttarget - currentvalueRight;
 			ScissorLiftRight = ScissorErrorRight/3;
-			if (ScissorLiftRight > 127) {
+			if (ScissorLiftRight > 127) { // go up
 				ScissorLiftRight = 127;
 			}
-			else if (ScissorLiftRight < -127)
+			else if (ScissorLiftRight < -SCISSOR_DOWN_POWER) // go down
 			{
-				ScissorLiftRight = -127;
+				ScissorLiftRight = -SCISSOR_DOWN_POWER;
 			}
-			else if (abs(ScissorLiftRight) < 20)
+			else if (abs(ScissorLiftRight) < 30)
 				ScissorLiftRight = 0;
 
 
 			int currentvalueLeft = SensorValue[LeftLiftSensor];
-			ScissorErrorLeft = lefttarget - abs(currentvalueLeft);
+			ScissorErrorLeft = lefttarget - currentvalueLeft;
 			ScissorLiftLeft = ScissorErrorLeft/3;
-			if (ScissorLiftLeft > 127) {
-				ScissorLiftLeft = 127;
+			if (ScissorLiftLeft > SCISSOR_DOWN_POWER) { // go down
+				ScissorLiftLeft = SCISSOR_DOWN_POWER;
 			}
-			else if (ScissorLiftLeft < -127)
+			else if (ScissorLiftLeft < -127) // go up
 			{
 				ScissorLiftLeft = -127;
 			}
-			else if (abs(ScissorLiftLeft) < 20)
+			else if (abs(ScissorLiftLeft) < 30)
 				ScissorLiftLeft = 0;
 
+
+			if (ScissorErrorLeft+ScissorErrorRight > 100) { // negative one is faster (there is more psitive error), stop it
+				ScissorLiftRight = max(ScissorLiftRight,0);
+				ScissorLiftLeft = max(ScissorLiftLeft,0);
+			}
+			if (ScissorErrorLeft+ScissorErrorRight < -100) { // Right is faster, stop it
+				ScissorLiftRight = min(ScissorLiftRight,0);
+				ScissorLiftLeft = min(ScissorLiftLeft,0);
+			}
 			motorReq[RightLift] = ScissorLiftRight; // Negative sign since pot values decrease with height
 			motorReq[LeftLift] = -ScissorLiftLeft;
 
 		}
-		wait1Msec(MOTOR_TASK_DELAY);
+		wait1Msec(MOTOR_TASK_DELAY/2);
 	}
 }
 
@@ -551,12 +572,13 @@ task autonomous()
 
 task usercontrol()
 {
+
 	bool tankControl=false;
 	startTask(MotorSlewRateTask);
 	startTask(ScissorControl);
 	startTask(FourBarControl);
 	startTask(MobileGoalControl);
-	ScissorLiftControl = false;
+	ScissorLiftControl = true;
 		FourControl = true;
 		MobileGoal = true;
 	while(true)
@@ -603,8 +625,8 @@ task usercontrol()
 				ScissorLiftControl = true;
 			}
 		}
-		else
-	{
+		else // ScissorLiftControl
+		{
 			if (vexRT[Btn8UXmtr2] == 1)
 			{
 				motorReq[RightLift] = 127;
@@ -620,7 +642,7 @@ task usercontrol()
 				motorReq[RightLift] = 0;
 				motorReq[LeftLift] = 0;
 			}
-			}
+		} // End ScissorLift Control
 
 
 			if(vexRT[Btn7UXmtr2] == 1)
@@ -676,29 +698,29 @@ task usercontrol()
 
 			if(MobileGoal)
 			{
-			if ((vexRT[Btn7U] == 1)|| (vexRT[Btn5U] == 1)) // go in
-			{
-			Mogotarget = min(MAX_MOGO, Mogotarget + 30); //Decreased from 30 to 1, the loop is execute many times per seconds, so the value was changing too fast
-			MobileGoal = true;
-			}
-			else if ((vexRT[Btn7D] == 1) || (vexRT[Btn5D] == 1)) // go out
-			{
-			MogoTarget = Max(MIN_MOGO, MogoTarget - 30);
-			MobileGoal = true;
-		  }
+				if ((vexRT[Btn7D] == 1)|| (vexRT[Btn5U] == 1)) // go in
+				{
+					Mogotarget = min(MAX_MOGO, Mogotarget + 30); //Decreased from 30 to 1, the loop is execute many times per seconds, so the value was changing too fast
+					MobileGoal = true;
+				}
+				else if ((vexRT[Btn7U] == 1) || (vexRT[Btn5D] == 1)) // go out
+				{
+					MogoTarget = Max(MIN_MOGO, MogoTarget - 30);
+					MobileGoal = true;
+		  	}
 			}
 			else
 			{
-			if(vexRT[Btn7U] == 1) // go in
-			{
-				motorReq[Mogo] = 127;
+				if(vexRT[Btn7D] == 1) // go in
+				{
+					motorReq[Mogo] = 127;
+				}
+				else if(vexRT[Btn7U] == 1) // go out
+				{
+					motorReq[Mogo] = -127;
+				}
+				else motorReq[Mogo] = 0;
 			}
-			else if(vexRT[Btn7D] == 1) // go out
-			{
-				motorReq[Mogo] = -127;
-			}
-			else motorReq[Mogo] = 0;
-		}
 
 //			if (vexRT[Btn5D] == 1)
 //			{
